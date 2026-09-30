@@ -460,12 +460,12 @@ export default function LandingPage({
           {/* Input Nama */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-gray-800 block">
-              Nama Lengkap Kamu
+              Nama Kamu
             </label>
             <div className="relative">
               <input
                 type="text"
-                placeholder="Ketik nama lengkapmu di sini..."
+                placeholder="Ketik nama kamu di sini..."
                 value={studentName}
                 onChange={e => setStudentName(e.target.value)}
                 className="w-full bg-white border-3 border-black p-3.5 text-base font-bold text-black placeholder:font-normal placeholder:text-gray-400 focus:outline-hidden focus:ring-2 focus:ring-[#FFE600] shadow-[3px_3px_0px_#000]"
