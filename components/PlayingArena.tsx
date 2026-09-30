@@ -11,26 +11,75 @@ import { playSound, setSoundMuted, getSoundMuted } from '@/utils/audio';
 import { MathMascot } from '@/components/MathMascot';
 import FloatingScrollControls from '@/components/FloatingScrollControls';
 
+export interface SavedSession {
+  studentName: string;
+  selectedGrade: Grade;
+  quizData: {
+    handQuestions: HandQuestion[];
+    headQuestions: HeadQuestion[];
+  };
+  qIndex: number;
+  score: number;
+  streak: number;
+  lives: number;
+  answersList: AnswerRecord[];
+  timestamp: number;
+}
+
 interface PlayingArenaProps {
   studentName: string;
   selectedGrade: Grade;
   onFinishGame: (finalScore: number, records: AnswerRecord[]) => void;
   onQuitToMenu: () => void;
+  savedSession?: SavedSession | null;
 }
 
 export default function PlayingArena({
   studentName,
   selectedGrade,
   onFinishGame,
-  onQuitToMenu
+  onQuitToMenu,
+  savedSession
 }: PlayingArenaProps) {
   // Quiz Sessions (15 Hand + 5 Head)
-  const [quizData] = useState(() => generateRandomQuizSession(selectedGrade));
-  const [qIndex, setQIndex] = useState<number>(0);
-  const [score, setScore] = useState<number>(0);
-  const [streak, setStreak] = useState<number>(0);
-  const [lives, setLives] = useState<number>(3);
-  const [answersList, setAnswersList] = useState<AnswerRecord[]>([]);
+  const [quizData] = useState(() => savedSession?.quizData || generateRandomQuizSession(selectedGrade));
+  const [qIndex, setQIndex] = useState<number>(() => savedSession?.qIndex ?? 0);
+  const [score, setScore] = useState<number>(() => savedSession?.score ?? 0);
+  const [streak, setStreak] = useState<number>(() => savedSession?.streak ?? 0);
+  const [lives, setLives] = useState<number>(() => savedSession?.lives ?? 3);
+  const [answersList, setAnswersList] = useState<AnswerRecord[]>(() => savedSession?.answersList ?? []);
+
+  // 1. BEFOREUNLOAD GUARD: Prevent accidental refresh or tab close
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
+
+  // 2. AUTO-SAVE ACTIVE SESSION TO LOCALSTORAGE
+  useEffect(() => {
+    if (qIndex < 20 && lives > 0) {
+      const sessionData: SavedSession = {
+        studentName,
+        selectedGrade,
+        quizData,
+        qIndex,
+        score,
+        streak,
+        lives,
+        answersList,
+        timestamp: Date.now()
+      };
+      try {
+        localStorage.setItem('mathmotion_active_session', JSON.stringify(sessionData));
+      } catch (e) {
+        console.warn('Failed to auto-save session to localStorage', e);
+      }
+    }
+  }, [studentName, selectedGrade, quizData, qIndex, score, streak, lives, answersList]);
 
   // Reset scroll to top instantly & 600ms gesture cooldown on question change
   const [isQuestionCooldown, setIsQuestionCooldown] = useState<boolean>(true);
@@ -300,11 +349,23 @@ export default function PlayingArena({
     hasTriggeredPinchRef.current = false;
 
     if (qIndex + 1 >= 20) {
+      try {
+        localStorage.removeItem('mathmotion_active_session');
+      } catch {}
       onFinishGame(score, answersList);
     } else {
       setQIndex(prev => prev + 1);
     }
   }, [qIndex, score, answersList, onFinishGame]);
+
+  const handleQuitGame = () => {
+    if (confirm('Kembali ke menu utama? Sesi saat ini akan direset.')) {
+      try {
+        localStorage.removeItem('mathmotion_active_session');
+      } catch {}
+      onQuitToMenu();
+    }
+  };
 
   // ========================================================
   // 4. TOUCHLESS HAND INTERACTION (PINCH & HOLD 750ms)
@@ -554,11 +615,7 @@ export default function PlayingArena({
           {/* Left: Exit + Mascot + Title & Student */}
           <div className="flex items-center gap-3">
             <button
-              onClick={() => {
-                if (confirm('Kembali ke menu utama?')) {
-                  onQuitToMenu();
-                }
-              }}
+              onClick={handleQuitGame}
               className="bg-white hover:bg-gray-100 border-2 border-black px-3 py-1.5 text-xs font-bold uppercase shadow-[2px_2px_0px_#000] cursor-pointer active:translate-x-0.5 active:translate-y-0.5"
             >
               ← Keluar
@@ -619,11 +676,7 @@ export default function PlayingArena({
           <div className="flex items-center justify-between gap-2">
             {/* Kiri: Tombol Back Compact */}
             <button
-              onClick={() => {
-                if (confirm('Kembali ke menu utama?')) {
-                  onQuitToMenu();
-                }
-              }}
+              onClick={handleQuitGame}
               className="bg-white hover:bg-gray-100 border-2 border-black p-1.5 shadow-[2px_2px_0px_#000] cursor-pointer shrink-0 active:translate-x-0.5 active:translate-y-0.5"
               title="Kembali ke Menu Utama"
             >
