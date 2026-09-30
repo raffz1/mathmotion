@@ -9,6 +9,7 @@ import { Grade, HandQuestion, HeadQuestion, generateRandomQuizSession } from '@/
 import { AnswerRecord } from '@/components/ResultPage';
 import { playSound, setSoundMuted, getSoundMuted } from '@/utils/audio';
 import { MathMascot } from '@/components/MathMascot';
+import FloatingScrollControls from '@/components/FloatingScrollControls';
 
 interface PlayingArenaProps {
   studentName: string;
@@ -31,9 +32,15 @@ export default function PlayingArena({
   const [lives, setLives] = useState<number>(3);
   const [answersList, setAnswersList] = useState<AnswerRecord[]>([]);
 
-  // Reset scroll to top instantly on question change
+  // Reset scroll to top instantly & 600ms gesture cooldown on question change
+  const [isQuestionCooldown, setIsQuestionCooldown] = useState<boolean>(true);
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
+    setIsQuestionCooldown(true);
+    const timer = setTimeout(() => {
+      setIsQuestionCooldown(false);
+    }, 600);
+    return () => clearTimeout(timer);
   }, [qIndex]);
 
   // Sound Muted State
@@ -65,6 +72,7 @@ export default function PlayingArena({
   const pinchStartTimeRef = useRef<number | null>(null);
   const hasTriggeredPinchRef = useRef<boolean>(false);
   const lastHoveredCardRef = useRef<number | null>(null);
+  const lastCursorPosRef = useRef<{ x: number; y: number; time: number } | null>(null);
 
   // Next Button Dwell / Pinch in Feedback Box
   const nextBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -344,6 +352,14 @@ export default function PlayingArena({
     }
 
     // B. QUIZ PLAYING: Check hover on 3 option cards
+    // 1. If in question transition cooldown, disable pinch selection
+    if (isQuestionCooldown) {
+      pinchStartTimeRef.current = null;
+      hasTriggeredPinchRef.current = false;
+      setPinchProgress(0);
+      return;
+    }
+
     let foundIdx: number | null = null;
     optionRefs.current.forEach((el, idx) => {
       if (!el) return;
@@ -376,9 +392,24 @@ export default function PlayingArena({
       return;
     }
 
+    // Velocity / Fast Movement Filter: reset timer if moving rapidly across cards
+    const now = Date.now();
+    if (lastCursorPosRef.current) {
+      const dt = Math.max(1, now - lastCursorPosRef.current.time);
+      const dx = virtualCursor.x - lastCursorPosRef.current.x;
+      const dy = virtualCursor.y - lastCursorPosRef.current.y;
+      const speed = Math.hypot(dx, dy) / dt; // % / ms
+
+      if (speed > 0.12) {
+        pinchStartTimeRef.current = null;
+        setPinchProgress(0);
+      }
+    }
+    lastCursorPosRef.current = { x: virtualCursor.x, y: virtualCursor.y, time: now };
+
     const activeIdx = foundIdx;
 
-    // PINCH & HOLD 750ms SELECTION (ONLY WHEN PINCHING)
+    // PINCH & HOLD 750ms SELECTION (ONLY WHEN PINCHING STABLY)
     if (virtualCursor.isPinching) {
       if (!pinchStartTimeRef.current) {
         pinchStartTimeRef.current = Date.now();
@@ -406,7 +437,29 @@ export default function PlayingArena({
       hasTriggeredPinchRef.current = false;
       setPinchProgress(0);
     }
-  }, [virtualCursor, isHeadPhase, feedbackState, currentHandQ, handleSubmitAnswer, handleProceedNext]);
+  }, [virtualCursor, isHeadPhase, feedbackState, isQuestionCooldown, currentHandQ, handleSubmitAnswer, handleProceedNext]);
+
+  // ========================================================
+  // 5. EDGE SCROLLING IN PLAYING ARENA (<18% / >75%)
+  // ========================================================
+  useEffect(() => {
+    if (isHeadPhase || !virtualCursor.isDetected || feedbackState?.isOpen) return;
+
+    let scrollInterval: NodeJS.Timeout | null = null;
+    if (virtualCursor.y < 18) {
+      scrollInterval = setInterval(() => {
+        window.scrollBy({ top: -16, behavior: 'auto' });
+      }, 30);
+    } else if (virtualCursor.y > 75) {
+      scrollInterval = setInterval(() => {
+        window.scrollBy({ top: 16, behavior: 'auto' });
+      }, 30);
+    }
+
+    return () => {
+      if (scrollInterval) clearInterval(scrollInterval);
+    };
+  }, [virtualCursor.y, virtualCursor.isDetected, isHeadPhase, feedbackState]);
 
   // ========================================================
   // 5. HEAD MOTION LOOP (1.5s STABLE HOLD)
@@ -879,6 +932,12 @@ export default function PlayingArena({
           </div>
         </div>
       )}
+
+      {/* FLOATING SCROLL CONTROLS FOR GESTURE & MOBILE */}
+      <FloatingScrollControls 
+        virtualCursor={virtualCursor}
+        isVisible={!isHeadPhase && virtualCursor.isDetected}
+      />
 
       {/* ======================================================== */}
       {/* 7. WEBCAM PREVIEW */}

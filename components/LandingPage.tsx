@@ -11,6 +11,7 @@ import { LEARNING_MODULES, LearningModule } from '@/data/learningModules';
 import LearningModal from '@/components/LearningModal';
 import GestureGuideModal from '@/components/GestureGuideModal';
 import { MathMascot } from '@/components/MathMascot';
+import FloatingScrollControls from '@/components/FloatingScrollControls';
 import { playSound, setSoundMuted, getSoundMuted } from '@/utils/audio';
 
 interface LandingPageProps {
@@ -174,7 +175,7 @@ export default function LandingPage({
   }, [isCameraActive]);
 
   // ========================================================
-  // 2. EDGE SCROLLING WITH DEADZONE (>92% / <10%) & >400ms DEBOUNCE
+  // 2. EDGE SCROLLING WITH WIDE ZONES (<18% / >75%) & >300ms DEBOUNCE
   // ========================================================
   useEffect(() => {
     if (!isCameraActive || !virtualCursor.isDetected) {
@@ -187,25 +188,25 @@ export default function LandingPage({
     const scrollTarget = (selectedModule && modalRef.current) ? modalRef.current : window;
     const now = Date.now();
 
-    if (virtualCursor.y < 10) {
+    if (virtualCursor.y < 18) {
       if (!scrollStartTimeRef.current || scrollStartTimeRef.current.zone !== 'UP') {
         scrollStartTimeRef.current = { zone: 'UP', time: now };
       }
 
       const elapsed = now - scrollStartTimeRef.current.time;
-      if (elapsed > 400) {
+      if (elapsed > 300) {
         setScrollZone('UP');
         scrollInterval = setInterval(() => {
           scrollTarget.scrollBy({ top: -16, behavior: 'auto' });
         }, 30);
       }
-    } else if (virtualCursor.y > 92) {
+    } else if (virtualCursor.y > 75) {
       if (!scrollStartTimeRef.current || scrollStartTimeRef.current.zone !== 'DOWN') {
         scrollStartTimeRef.current = { zone: 'DOWN', time: now };
       }
 
       const elapsed = now - scrollStartTimeRef.current.time;
-      if (elapsed > 400) {
+      if (elapsed > 300) {
         setScrollZone('DOWN');
         scrollInterval = setInterval(() => {
           scrollTarget.scrollBy({ top: 16, behavior: 'auto' });
@@ -629,6 +630,13 @@ export default function LandingPage({
         playsInline
         muted
         className="hidden"
+      />
+
+      {/* FLOATING SCROLL CONTROLS FOR GESTURE & MOBILE */}
+      <FloatingScrollControls 
+        virtualCursor={virtualCursor}
+        scrollTargetRef={modalRef}
+        isVisible={isCameraActive && virtualCursor.isDetected}
       />
 
       {/* FOOTER */}
