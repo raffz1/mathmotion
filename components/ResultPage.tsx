@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Trophy, CheckCircle2, XCircle, RefreshCw, Home,
   Star, ChevronDown, ChevronUp, BookOpen
@@ -8,6 +8,7 @@ import {
 import confetti from 'canvas-confetti';
 import { Grade } from '@/data/questions';
 import { playSound } from '@/utils/audio';
+import FloatingScrollControls from '@/components/FloatingScrollControls';
 
 export interface AnswerRecord {
   questionNumber: number;
@@ -45,6 +46,32 @@ export default function ResultPage({
   const wrongCount = totalQuestions - correctCount;
   const accuracy = Math.round((correctCount / totalQuestions) * 100);
 
+  // ========================================================
+  // 1. TOUCHLESS GESTURE STATE & REFS
+  // ========================================================
+  const [virtualCursor, setVirtualCursor] = useState({
+    x: 50,
+    y: 50,
+    isPinching: false,
+    isDetected: false
+  });
+
+  const [pinchProgress, setPinchProgress] = useState<number>(0);
+  const pinchStartTimeRef = useRef<number | null>(null);
+  const hasTriggeredPinchRef = useRef<boolean>(false);
+  const lastHoveredKeyRef = useRef<string | null>(null);
+
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const playAgainBtnRef = useRef<HTMLButtonElement | null>(null);
+  const backHomeBtnRef = useRef<HTMLButtonElement | null>(null);
+  const filterAllBtnRef = useRef<HTMLButtonElement | null>(null);
+  const filterWrongBtnRef = useRef<HTMLButtonElement | null>(null);
+  const filterCorrectBtnRef = useRef<HTMLButtonElement | null>(null);
+  const accordionRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
+
+  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+
+  // Initial Celebration
   useEffect(() => {
     playSound('fanfare');
     confetti({
@@ -54,6 +81,235 @@ export default function ResultPage({
       colors: ['#FFE600', '#FF70A6', '#00F5D4', '#70D6FF', '#FF9770']
     });
   }, []);
+
+  // ========================================================
+  // 2. MEDIAPIPE HAND TRACKING IN RESULT PAGE
+  // ========================================================
+  useEffect(() => {
+    let camera: any = null;
+    let hands: any = null;
+    let isActive = true;
+
+    const setupMediaPipe = async () => {
+      if (!isActive) return;
+      const win = window as any;
+
+      if (!win.Hands || !win.Camera) {
+        setTimeout(setupMediaPipe, 300);
+        return;
+      }
+
+      hands = new win.Hands({
+        locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+      });
+
+      hands.setOptions({
+        maxNumHands: 1,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.6,
+        minTrackingConfidence: 0.6
+      });
+
+      hands.onResults((results: any) => {
+        if (!isActive) return;
+        if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+          const lms = results.multiHandLandmarks[0];
+          const indexFinger = lms[8];
+          const thumb = lms[4];
+
+          const curX = (1 - indexFinger.x) * 100;
+          const curY = indexFinger.y * 100;
+
+          const pinchDist = Math.hypot(thumb.x - indexFinger.x, thumb.y - indexFinger.y);
+          const isPinch = pinchDist < 0.038;
+
+          setVirtualCursor({
+            x: Math.max(2, Math.min(98, curX)),
+            y: Math.max(2, Math.min(98, curY)),
+            isPinching: isPinch,
+            isDetected: true
+          });
+        } else {
+          setVirtualCursor(prev => ({ ...prev, isDetected: false }));
+        }
+      });
+
+      if (videoRef.current) {
+        try {
+          camera = new win.Camera(videoRef.current, {
+            onFrame: async () => {
+              if (!videoRef.current || !isActive) return;
+              try {
+                if (hands) await hands.send({ image: videoRef.current });
+              } catch {}
+            },
+            width: 480,
+            height: 360
+          });
+          camera.start();
+        } catch (err) {
+          console.warn('ResultPage camera start error:', err);
+        }
+      }
+    };
+
+    setupMediaPipe();
+
+    return () => {
+      isActive = false;
+      if (camera) {
+        try { camera.stop(); } catch {}
+      }
+    };
+  }, []);
+
+  // ========================================================
+  // 3. EDGE SCROLLING IN RESULT PAGE (<18% / >75%)
+  // ========================================================
+  useEffect(() => {
+    if (!virtualCursor.isDetected) return;
+
+    let scrollInterval: NodeJS.Timeout | null = null;
+    if (virtualCursor.y < 18) {
+      scrollInterval = setInterval(() => {
+        window.scrollBy({ top: -16, behavior: 'auto' });
+      }, 30);
+    } else if (virtualCursor.y > 75) {
+      scrollInterval = setInterval(() => {
+        window.scrollBy({ top: 16, behavior: 'auto' });
+      }, 30);
+    }
+
+    return () => {
+      if (scrollInterval) clearInterval(scrollInterval);
+    };
+  }, [virtualCursor.y, virtualCursor.isDetected]);
+
+  // ========================================================
+  // 4. PINCH & HOLD (750ms) INTERACTION FOR BUTTONS & ACCORDION
+  // ========================================================
+  useEffect(() => {
+    if (!virtualCursor.isDetected) {
+      setHoveredKey(null);
+      setPinchProgress(0);
+      pinchStartTimeRef.current = null;
+      hasTriggeredPinchRef.current = false;
+      return;
+    }
+
+    const cursorPxX = (virtualCursor.x / 100) * window.innerWidth;
+    const cursorPxY = (virtualCursor.y / 100) * window.innerHeight;
+
+    let activeKey: string | null = null;
+    let activeAction: (() => void) | null = null;
+
+    // Check Play Again Button
+    if (playAgainBtnRef.current) {
+      const rect = playAgainBtnRef.current.getBoundingClientRect();
+      if (cursorPxX >= rect.left && cursorPxX <= rect.right && cursorPxY >= rect.top && cursorPxY <= rect.bottom) {
+        activeKey = 'PLAY_AGAIN';
+        activeAction = () => {
+          playSound('click');
+          try { localStorage.setItem('mathmotion_camera_active', 'true'); } catch {}
+          onPlayAgain();
+        };
+      }
+    }
+
+    // Check Back Home Button
+    if (!activeKey && backHomeBtnRef.current) {
+      const rect = backHomeBtnRef.current.getBoundingClientRect();
+      if (cursorPxX >= rect.left && cursorPxX <= rect.right && cursorPxY >= rect.top && cursorPxY <= rect.bottom) {
+        activeKey = 'BACK_HOME';
+        activeAction = () => {
+          playSound('click');
+          try { localStorage.setItem('mathmotion_camera_active', 'true'); } catch {}
+          onBackToHome();
+        };
+      }
+    }
+
+    // Check Filter All Button
+    if (!activeKey && filterAllBtnRef.current) {
+      const rect = filterAllBtnRef.current.getBoundingClientRect();
+      if (cursorPxX >= rect.left && cursorPxX <= rect.right && cursorPxY >= rect.top && cursorPxY <= rect.bottom) {
+        activeKey = 'FILTER_ALL';
+        activeAction = () => { setFilter('ALL'); playSound('pop'); };
+      }
+    }
+
+    // Check Filter Wrong Button
+    if (!activeKey && filterWrongBtnRef.current) {
+      const rect = filterWrongBtnRef.current.getBoundingClientRect();
+      if (cursorPxX >= rect.left && cursorPxX <= rect.right && cursorPxY >= rect.top && cursorPxY <= rect.bottom) {
+        activeKey = 'FILTER_WRONG';
+        activeAction = () => { setFilter('WRONG'); playSound('pop'); };
+      }
+    }
+
+    // Check Filter Correct Button
+    if (!activeKey && filterCorrectBtnRef.current) {
+      const rect = filterCorrectBtnRef.current.getBoundingClientRect();
+      if (cursorPxX >= rect.left && cursorPxX <= rect.right && cursorPxY >= rect.top && cursorPxY <= rect.bottom) {
+        activeKey = 'FILTER_CORRECT';
+        activeAction = () => { setFilter('CORRECT'); playSound('pop'); };
+      }
+    }
+
+    // Check Accordion Items
+    if (!activeKey) {
+      for (const [qNumStr, el] of Object.entries(accordionRefs.current)) {
+        if (!el) continue;
+        const rect = el.getBoundingClientRect();
+        if (cursorPxX >= rect.left && cursorPxX <= rect.right && cursorPxY >= rect.top && cursorPxY <= rect.bottom) {
+          const qNum = parseInt(qNumStr, 10);
+          activeKey = `ACCORDION_${qNum}`;
+          activeAction = () => {
+            playSound('pop');
+            setExpandedId(prev => (prev === qNum ? null : qNum));
+          };
+          break;
+        }
+      }
+    }
+
+    setHoveredKey(activeKey);
+
+    // Reset progress if target changed
+    if (activeKey !== lastHoveredKeyRef.current) {
+      lastHoveredKeyRef.current = activeKey;
+      pinchStartTimeRef.current = null;
+      hasTriggeredPinchRef.current = false;
+      setPinchProgress(0);
+    }
+
+    if (!activeKey || !activeAction) {
+      pinchStartTimeRef.current = null;
+      hasTriggeredPinchRef.current = false;
+      setPinchProgress(0);
+      return;
+    }
+
+    // Pinch and Hold logic
+    if (virtualCursor.isPinching) {
+      if (!pinchStartTimeRef.current) {
+        pinchStartTimeRef.current = Date.now();
+      }
+
+      const elapsed = Date.now() - pinchStartTimeRef.current;
+      const prog = Math.min(100, Math.round((elapsed / 750) * 100));
+      setPinchProgress(prog);
+
+      if (prog >= 100 && !hasTriggeredPinchRef.current) {
+        hasTriggeredPinchRef.current = true;
+        activeAction();
+      }
+    } else {
+      pinchStartTimeRef.current = null;
+      hasTriggeredPinchRef.current = false;
+      setPinchProgress(0);
+    }
+  }, [virtualCursor, onPlayAgain, onBackToHome]);
 
   let badgeTitle = 'Peserta Tangguh';
   let stars = 3;
@@ -78,8 +334,43 @@ export default function ResultPage({
   });
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-6 py-4 md:py-8">
+    <div className="w-full max-w-4xl mx-auto space-y-6 py-4 md:py-8 relative">
       
+      {/* ======================================================== */}
+      {/* TOUCHLESS VIRTUAL CURSOR WITH CIRCULAR PROGRESS RING */}
+      {/* ======================================================== */}
+      {virtualCursor.isDetected && (
+        <div
+          className="fixed pointer-events-none z-[99999] transition-transform duration-75 ease-out -translate-x-1/2 -translate-y-1/2"
+          style={{ left: `${virtualCursor.x}%`, top: `${virtualCursor.y}%` }}
+        >
+          <div className={`relative flex items-center justify-center rounded-full border-4 border-black transition-all ${
+            virtualCursor.isPinching
+              ? 'w-14 h-14 bg-[#FF0055] scale-110 shadow-[0_0_15px_#FF0055]'
+              : 'w-11 h-11 bg-[#00F5D4] shadow-[3px_3px_0px_#000]'
+          }`}>
+            <span className="text-[10px] font-black uppercase text-black">
+              {virtualCursor.isPinching ? 'HOLD' : '👆'}
+            </span>
+
+            {/* Circular Progress Ring for Pinch & Hold 750ms */}
+            {pinchProgress > 0 && (
+              <svg className="absolute -inset-1.5 w-16 h-16 pointer-events-none -rotate-90">
+                <circle
+                  cx="32"
+                  cy="32"
+                  r="26"
+                  className="stroke-[#FFE600] fill-none"
+                  strokeWidth="5"
+                  strokeDasharray="163.36"
+                  strokeDashoffset={163.36 - (163.36 * pinchProgress) / 100}
+                />
+              </svg>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ======================================================== */}
       {/* 1. HERO HEADER: SAMBUTAN PERSONAL */}
       {/* ======================================================== */}
@@ -151,21 +442,29 @@ export default function ResultPage({
       {/* ======================================================== */}
       <section className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
         <button
+          ref={playAgainBtnRef}
           onClick={() => {
             playSound('click');
+            try { localStorage.setItem('mathmotion_camera_active', 'true'); } catch {}
             onPlayAgain();
           }}
-          className="w-full sm:w-auto bg-[#FFE600] hover:bg-yellow-300 border-3 border-black px-6 py-3.5 font-black text-sm uppercase shadow-[4px_4px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 flex items-center justify-center gap-2 cursor-pointer transition-all"
+          className={`w-full sm:w-auto bg-[#FFE600] hover:bg-yellow-300 border-3 border-black px-6 py-3.5 font-black text-sm uppercase shadow-[4px_4px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 flex items-center justify-center gap-2 cursor-pointer transition-all ${
+            hoveredKey === 'PLAY_AGAIN' ? 'ring-3 ring-black -translate-y-0.5' : ''
+          }`}
         >
           <RefreshCw className="w-4 h-4 stroke-[2.5]" /> Mau Main Ulang
         </button>
 
         <button
+          ref={backHomeBtnRef}
           onClick={() => {
             playSound('click');
+            try { localStorage.setItem('mathmotion_camera_active', 'true'); } catch {}
             onBackToHome();
           }}
-          className="w-full sm:w-auto bg-white hover:bg-gray-100 border-3 border-black px-6 py-3.5 font-bold text-sm uppercase shadow-[4px_4px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 flex items-center justify-center gap-2 cursor-pointer transition-all"
+          className={`w-full sm:w-auto bg-white hover:bg-gray-100 border-3 border-black px-6 py-3.5 font-bold text-sm uppercase shadow-[4px_4px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 flex items-center justify-center gap-2 cursor-pointer transition-all ${
+            hoveredKey === 'BACK_HOME' ? 'ring-3 ring-black -translate-y-0.5' : ''
+          }`}
         >
           <Home className="w-4 h-4 stroke-[2.5]" /> Kembali ke Beranda Aja Deh
         </button>
@@ -182,32 +481,35 @@ export default function ResultPage({
               <BookOpen className="w-5 h-5 text-black stroke-[2.5]" /> Pembahasan Soal
             </h2>
             <p className="text-xs font-normal text-gray-600">
-              Klik setiap soal untuk melihat penjelasan lengkapnya
+              Arahkan kursor & cubit (atau klik) setiap soal untuk melihat penjelasan lengkapnya
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <button
+              ref={filterAllBtnRef}
               onClick={() => { setFilter('ALL'); playSound('pop'); }}
-              className={`px-3 py-1 text-xs font-bold uppercase border-2 border-black shadow-[2px_2px_0px_#000] cursor-pointer ${
+              className={`px-3 py-1 text-xs font-bold uppercase border-2 border-black shadow-[2px_2px_0px_#000] cursor-pointer transition-all ${
                 filter === 'ALL' ? 'bg-[#FFE600]' : 'bg-white'
-              }`}
+              } ${hoveredKey === 'FILTER_ALL' ? 'ring-2 ring-black' : ''}`}
             >
               Semua ({totalQuestions})
             </button>
             <button
+              ref={filterWrongBtnRef}
               onClick={() => { setFilter('WRONG'); playSound('pop'); }}
-              className={`px-3 py-1 text-xs font-bold uppercase border-2 border-black shadow-[2px_2px_0px_#000] cursor-pointer ${
+              className={`px-3 py-1 text-xs font-bold uppercase border-2 border-black shadow-[2px_2px_0px_#000] cursor-pointer transition-all ${
                 filter === 'WRONG' ? 'bg-[#FF70A6]' : 'bg-white'
-              }`}
+              } ${hoveredKey === 'FILTER_WRONG' ? 'ring-2 ring-black' : ''}`}
             >
               Salah ({wrongCount})
             </button>
             <button
+              ref={filterCorrectBtnRef}
               onClick={() => { setFilter('CORRECT'); playSound('pop'); }}
-              className={`px-3 py-1 text-xs font-bold uppercase border-2 border-black shadow-[2px_2px_0px_#000] cursor-pointer ${
+              className={`px-3 py-1 text-xs font-bold uppercase border-2 border-black shadow-[2px_2px_0px_#000] cursor-pointer transition-all ${
                 filter === 'CORRECT' ? 'bg-[#00F5D4]' : 'bg-white'
-              }`}
+              } ${hoveredKey === 'FILTER_CORRECT' ? 'ring-2 ring-black' : ''}`}
             >
               Benar ({correctCount})
             </button>
@@ -218,12 +520,15 @@ export default function ResultPage({
         <div className="space-y-3">
           {filteredAnswers.map(ans => {
             const isExpanded = expandedId === ans.questionNumber;
+            const isTargetHovered = hoveredKey === `ACCORDION_${ans.questionNumber}`;
+
             return (
               <div
                 key={ans.questionNumber}
+                ref={el => { accordionRefs.current[ans.questionNumber] = el; }}
                 className={`border-3 border-black transition-all ${
                   ans.isCorrect ? 'bg-[#FFFDF0]' : 'bg-red-50'
-                } shadow-[3px_3px_0px_#000]`}
+                } shadow-[3px_3px_0px_#000] ${isTargetHovered ? 'ring-3 ring-black -translate-y-0.5' : ''}`}
               >
                 <div
                   onClick={() => {
@@ -243,7 +548,7 @@ export default function ResultPage({
                     <div>
                       <div className="flex items-center gap-1.5 mb-1">
                         <span className="bg-black text-white text-[10px] font-bold uppercase px-1.5 py-0.2">
-                          Soal {ans.questionNumber}
+                          Soal {ans.questionNumber} ({ans.type === 'HEAD' ? 'True/False' : 'Pilihan Ganda'})
                         </span>
                         <span className="text-[10px] font-medium text-gray-600">
                           {ans.topic}
@@ -296,6 +601,27 @@ export default function ResultPage({
         </div>
 
       </section>
+
+      {/* FLOATING SCROLL CONTROLS FOR GESTURE & MOBILE */}
+      <FloatingScrollControls 
+        virtualCursor={virtualCursor}
+        isVisible={virtualCursor.isDetected}
+      />
+
+      {/* WEBCAM PREVIEW IN RESULT PAGE */}
+      <div className="fixed bottom-3 right-3 z-40 flex flex-col items-end">
+        <div className="relative border-2 border-black shadow-[3px_3px_0px_#000] bg-black overflow-hidden">
+          <video
+            ref={videoRef}
+            playsInline
+            muted
+            className="w-24 h-18 md:w-36 md:h-28 object-cover scale-x-[-1]"
+          />
+          <div className="absolute top-1 left-1 bg-black/75 text-white font-mono text-[9px] px-1 py-0.5">
+            {virtualCursor.isDetected ? 'Hand: OK' : 'Mencari...'}
+          </div>
+        </div>
+      </div>
 
     </div>
   );

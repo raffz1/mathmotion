@@ -33,8 +33,24 @@ export default function LandingPage({
   const [isGuideOpen, setIsGuideOpen] = useState<boolean>(false);
   const [isMuted, setIsMutedState] = useState<boolean>(getSoundMuted());
 
-  // Camera Toggle on Landing Page
-  const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
+  // Camera Toggle on Landing Page with LocalStorage Persistence
+  const [isCameraActive, setIsCameraActive] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('mathmotion_camera_active');
+      return saved !== null ? JSON.parse(saved) : false;
+    }
+    return false;
+  });
+
+  const toggleCamera = (active: boolean) => {
+    setIsCameraActive(active);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('mathmotion_camera_active', JSON.stringify(active));
+      } catch {}
+    }
+  };
+
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   // Virtual Cursor State
@@ -356,7 +372,7 @@ export default function LandingPage({
           <button
             onClick={() => {
               const next = !isCameraActive;
-              setIsCameraActive(next);
+              toggleCamera(next);
               playSound('click');
             }}
             className={`border-3 border-black px-3.5 py-2 text-xs font-black uppercase shadow-[2px_2px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 flex items-center gap-1.5 cursor-pointer transition-all ${
@@ -407,7 +423,7 @@ export default function LandingPage({
             <span>Kamera gesture aktif! Kamu bisa gerakkan telunjukmu, cubit + tahan untuk mengklik, dan arahkan ke atas/bawah layar untuk scroll.</span>
           </div>
           <button
-            onClick={() => setIsCameraActive(false)}
+            onClick={() => toggleCamera(false)}
             className="bg-white hover:bg-gray-100 border-2 border-black px-2 py-0.5 font-bold uppercase shadow-[1px_1px_0px_#000] text-[10px] cursor-pointer shrink-0"
           >
             Matikan
@@ -538,6 +554,9 @@ export default function LandingPage({
               onClick={() => {
                 if (!isFormValid) return;
                 playSound('click');
+                try {
+                  localStorage.setItem('mathmotion_camera_active', 'true');
+                } catch {}
                 onStartGame();
               }}
               disabled={!isFormValid}

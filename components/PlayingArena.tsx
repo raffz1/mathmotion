@@ -136,8 +136,24 @@ export default function PlayingArena({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const optionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Phase Determination: 0 - 14 = Hand Quiz (15 Soal); 15 - 19 = Head Quiz (5 Soal)
-  const isHeadPhase = qIndex >= 15;
+  // Phase & Dynamic Gesture Controller
+  const isHeadGestureQuestion = qIndex >= 15;
+  const isFeedbackActive = Boolean(feedbackState?.isOpen);
+
+  // Hand tracking & virtual cursor is enabled on Hand questions OR whenever Feedback modal is open!
+  const isHandTrackingEnabled = !isHeadGestureQuestion || isFeedbackActive;
+
+  // Head gesture is ONLY enabled on True/False questions when feedback modal is NOT open!
+  const isHeadGestureEnabled = isHeadGestureQuestion && !isFeedbackActive;
+
+  const isHandTrackingEnabledRef = useRef<boolean>(isHandTrackingEnabled);
+  const isHeadGestureEnabledRef = useRef<boolean>(isHeadGestureEnabled);
+
+  useEffect(() => {
+    isHandTrackingEnabledRef.current = isHandTrackingEnabled;
+    isHeadGestureEnabledRef.current = isHeadGestureEnabled;
+  }, [isHandTrackingEnabled, isHeadGestureEnabled]);
+
   const currentHandQ: HandQuestion = quizData.handQuestions[qIndex] || quizData.handQuestions[0];
   const currentHeadQ: HeadQuestion = quizData.headQuestions[qIndex - 15] || quizData.headQuestions[0];
 
@@ -178,7 +194,7 @@ export default function PlayingArena({
       });
 
       hands.onResults((results: any) => {
-        if (!isActive || isHeadPhase) return;
+        if (!isActive || !isHandTrackingEnabledRef.current) return;
         if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
           const lms = results.multiHandLandmarks[0];
           const indexFinger = lms[8];
@@ -214,7 +230,10 @@ export default function PlayingArena({
       });
 
       faceMesh.onResults((results: any) => {
-        if (!isActive || !isHeadPhase) return;
+        if (!isActive || !isHeadGestureEnabledRef.current) {
+          setHeadDirection('CENTER');
+          return;
+        }
         if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
           const face = results.multiFaceLandmarks[0];
           const nose = face[1];
@@ -243,9 +262,9 @@ export default function PlayingArena({
             onFrame: async () => {
               if (!videoRef.current || !isActive) return;
               try {
-                if (isHeadPhase && faceMesh) {
+                if (isHeadGestureEnabledRef.current && faceMesh) {
                   await faceMesh.send({ image: videoRef.current });
-                } else if (!isHeadPhase && hands) {
+                } else if (isHandTrackingEnabledRef.current && hands) {
                   await hands.send({ image: videoRef.current });
                 }
               } catch {}
@@ -268,7 +287,7 @@ export default function PlayingArena({
         try { camera.stop(); } catch {}
       }
     };
-  }, [isHeadPhase]);
+  }, []);
 
   // ========================================================
   // 2. SUBMIT ANSWER HANDLER
@@ -302,8 +321,8 @@ export default function PlayingArena({
 
     const newRecord: AnswerRecord = {
       questionNumber: qIndex + 1,
-      type: isHeadPhase ? 'HEAD' : 'HAND',
-      questionText: isHeadPhase ? currentHeadQ.statement : currentHandQ.question,
+      type: isHeadGestureQuestion ? 'HEAD' : 'HAND',
+      questionText: isHeadGestureQuestion ? currentHeadQ.statement : currentHandQ.question,
       topic: topicText,
       studentAnswer: studentAnswerText,
       correctAnswer: correctAnswerText,
@@ -335,7 +354,7 @@ export default function PlayingArena({
     setTimeout(() => {
       setScreenEffect(null);
     }, 1000);
-  }, [feedbackState, streak, qIndex, isHeadPhase, currentHandQ, currentHeadQ]);
+  }, [feedbackState, streak, qIndex, isHeadGestureQuestion, currentHandQ, currentHeadQ]);
 
   // ========================================================
   // 3. ADVANCE TO NEXT QUESTION OR FINISH
@@ -371,13 +390,20 @@ export default function PlayingArena({
   // 4. TOUCHLESS HAND INTERACTION (PINCH & HOLD 750ms)
   // ========================================================
   useEffect(() => {
-    if (isHeadPhase) return;
+    if (!isHandTrackingEnabled) {
+      setHoveredCardIdx(null);
+      setIsNextBtnHovered(false);
+      setPinchProgress(0);
+      pinchStartTimeRef.current = null;
+      hasTriggeredPinchRef.current = false;
+      return;
+    }
 
     const cursorPxX = (virtualCursor.x / 100) * window.innerWidth;
     const cursorPxY = (virtualCursor.y / 100) * window.innerHeight;
 
-    // A. IF FEEDBACK MODAL IS OPEN: Check hover on Next Button
-    if (feedbackState?.isOpen) {
+    // A. IF FEEDBACK MODAL IS OPEN: Check hover on Next Button (Enabled for both Hand & Head questions!)
+    if (isFeedbackActive) {
       if (!nextBtnRef.current) return;
       const rect = nextBtnRef.current.getBoundingClientRect();
 
@@ -412,7 +438,7 @@ export default function PlayingArena({
       return;
     }
 
-    // B. QUIZ PLAYING: Check hover on 3 option cards
+    // B. QUIZ PLAYING (HAND QUESTIONS): Check hover on 3 option cards
     // 1. If in question transition cooldown, disable pinch selection
     if (isQuestionCooldown) {
       pinchStartTimeRef.current = null;
@@ -498,13 +524,13 @@ export default function PlayingArena({
       hasTriggeredPinchRef.current = false;
       setPinchProgress(0);
     }
-  }, [virtualCursor, isHeadPhase, feedbackState, isQuestionCooldown, currentHandQ, handleSubmitAnswer, handleProceedNext]);
+  }, [virtualCursor, isHandTrackingEnabled, isFeedbackActive, isQuestionCooldown, currentHandQ, handleSubmitAnswer, handleProceedNext]);
 
   // ========================================================
   // 5. EDGE SCROLLING IN PLAYING ARENA (<18% / >75%)
   // ========================================================
   useEffect(() => {
-    if (isHeadPhase || !virtualCursor.isDetected || feedbackState?.isOpen) return;
+    if (!isHandTrackingEnabled || !virtualCursor.isDetected) return;
 
     let scrollInterval: NodeJS.Timeout | null = null;
     if (virtualCursor.y < 18) {
@@ -520,13 +546,17 @@ export default function PlayingArena({
     return () => {
       if (scrollInterval) clearInterval(scrollInterval);
     };
-  }, [virtualCursor.y, virtualCursor.isDetected, isHeadPhase, feedbackState]);
+  }, [virtualCursor.y, virtualCursor.isDetected, isHandTrackingEnabled]);
 
   // ========================================================
-  // 5. HEAD MOTION LOOP (1.5s STABLE HOLD)
+  // 6. HEAD MOTION LOOP (1.5s STABLE HOLD ON TRUE/FALSE)
   // ========================================================
   useEffect(() => {
-    if (!isHeadPhase || feedbackState?.isOpen) return;
+    if (!isHeadGestureEnabled) {
+      setHeadDwellProgress(0);
+      headStartTimeRef.current = null;
+      return;
+    }
 
     let timer: NodeJS.Timeout;
     if (headDirection !== 'CENTER') {
@@ -557,7 +587,7 @@ export default function PlayingArena({
     }
 
     return () => clearInterval(timer);
-  }, [headDirection, isHeadPhase, feedbackState, currentHeadQ, handleSubmitAnswer]);
+  }, [headDirection, isHeadGestureEnabled, currentHeadQ, handleSubmitAnswer]);
 
   return (
     <div className={`relative min-h-screen w-full flex flex-col justify-between select-none p-3 md:p-6 transition-all duration-300 ${
@@ -571,7 +601,7 @@ export default function PlayingArena({
       {/* ======================================================== */}
       {/* TOUCHLESS VIRTUAL CURSOR WITH CIRCULAR PROGRESS RING */}
       {/* ======================================================== */}
-      {!isHeadPhase && (
+      {isHandTrackingEnabled && virtualCursor.isDetected && (
         <div
           className="fixed pointer-events-none z-[99999] transition-transform duration-75 ease-out -translate-x-1/2 -translate-y-1/2"
           style={{ left: `${virtualCursor.x}%`, top: `${virtualCursor.y}%` }}
@@ -742,7 +772,7 @@ export default function PlayingArena({
         {/* ---------------------------------------------------- */}
         {/* FASE 1: GESTURE TANGAN (SOAL 1 - 15) */}
         {/* ---------------------------------------------------- */}
-        {!isHeadPhase && (
+        {!isHeadGestureQuestion && (
           <div className="flex flex-col items-center space-y-5">
             
             {/* KARTU PERTANYAAN */}
@@ -812,7 +842,7 @@ export default function PlayingArena({
         {/* ---------------------------------------------------- */}
         {/* FASE 2: GESTURE KEPALA (SOAL 16 - 20) */}
         {/* ---------------------------------------------------- */}
-        {isHeadPhase && (
+        {isHeadGestureQuestion && (
           <div className="flex flex-col items-center space-y-5">
             
             {/* PAPAN PERNYATAAN TRUE/FALSE */}
@@ -989,7 +1019,7 @@ export default function PlayingArena({
       {/* FLOATING SCROLL CONTROLS FOR GESTURE & MOBILE */}
       <FloatingScrollControls 
         virtualCursor={virtualCursor}
-        isVisible={!isHeadPhase && virtualCursor.isDetected}
+        isVisible={isHandTrackingEnabled && virtualCursor.isDetected}
       />
 
       {/* ======================================================== */}
@@ -1007,7 +1037,7 @@ export default function PlayingArena({
               className="w-24 h-18 md:w-36 md:h-28 object-cover scale-x-[-1]"
             />
             <div className="absolute top-1 left-1 bg-black/75 text-white font-mono text-[9px] px-1 py-0.5">
-              {isHeadPhase ? `Face: ${headDirection}` : (virtualCursor.isDetected ? 'Hand: OK' : 'Mencari...')}
+              {isHeadGestureEnabled ? `Face: ${headDirection}` : (virtualCursor.isDetected ? 'Hand: OK' : 'Mencari...')}
             </div>
           </div>
         </div>
