@@ -1,26 +1,120 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --bg-pattern-color: #FFFDF0;
+  --dot-color: rgba(0, 0, 0, 0.07);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg-pattern-color);
+  background-image: radial-gradient(var(--dot-color) 1.5px, transparent 1.5px);
+  background-size: 24px 24px;
+  color: #000000;
+  min-height: 100vh;
+}
+
+.font-brand {
+  font-family: var(--font-fredoka), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Neo-Brutalism Utilities */
+.neo-box {
+  border: 4px solid #000000;
+  box-shadow: 6px 6px 0px #000000;
+}
+
+.neo-box-lg {
+  border: 4px solid #000000;
+  box-shadow: 10px 10px 0px #000000;
+}
+
+.neo-box-sm {
+  border: 3px solid #000000;
+  box-shadow: 4px 4px 0px #000000;
+}
+
+.neo-btn {
+  border: 3px solid #000000;
+  box-shadow: 4px 4px 0px #000000;
+  transition: all 0.1s ease;
+}
+
+.neo-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0px #000000;
+}
+
+.neo-btn:active {
+  transform: translate(3px, 3px);
+  box-shadow: 0px 0px 0px #000000;
+}
+
+/* Edge Scroll Indicator Bars */
+.scroll-indicator-top {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  background: linear-gradient(to bottom, rgba(255, 230, 0, 0.4), transparent);
+  pointer-events: none;
+  z-index: 9998;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.scroll-indicator-bottom {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  background: linear-gradient(to top, rgba(255, 230, 0, 0.4), transparent);
+  pointer-events: none;
+  z-index: 9998;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Screen glow flash animations for answer feedback */
+@keyframes correct-glow {
+  0% { box-shadow: inset 0 0 0px #00F5D4; }
+  50% { box-shadow: inset 0 0 50px #00F5D4, 0 0 30px #00F5D4; }
+  100% { box-shadow: inset 0 0 0px #00F5D4; }
+}
+
+@keyframes wrong-shake-glow {
+  0% { box-shadow: inset 0 0 0px #FF0055; }
+  50% { box-shadow: inset 0 0 50px #FF0055, 0 0 30px #FF0055; }
+  100% { box-shadow: inset 0 0 0px #FF0055; }
+}
+
+.animate-correct-glow {
+  animation: correct-glow 0.8s ease-in-out;
+}
+
+.animate-wrong-glow {
+  animation: wrong-shake-glow 0.6s ease-in-out;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #FFFDF0;
+  border-left: 2px solid #000;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #FFE600;
+  border: 2px solid #000;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #FF70A6;
 }
