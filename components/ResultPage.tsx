@@ -334,7 +334,7 @@ export default function ResultPage({
   });
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-6 py-4 md:py-8 relative">
+    <div className="w-full max-w-4xl mx-auto space-y-6 py-4 md:py-8 px-4 md:px-6 relative">
       
       {/* ======================================================== */}
       {/* TOUCHLESS VIRTUAL CURSOR WITH CIRCULAR PROGRESS RING */}

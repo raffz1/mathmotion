@@ -291,7 +291,7 @@ export default function LandingPage({
   }, [virtualCursor.isPinching, virtualCursor.isDetected, isCameraActive, virtualCursor.x, virtualCursor.y]);
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-8 py-4 md:py-8 relative">
+    <div className="min-h-screen w-full flex flex-col justify-between relative">
 
       {/* ======================================================== */}
       {/* FLOATING SCROLL INDICATOR CUES */}
@@ -350,15 +350,14 @@ export default function LandingPage({
       )}
       
       {/* ======================================================== */}
-      {/* 1. TOP NAVBAR / HEADER WITH CUSTOM MASCOT LOGO */}
+      {/* 1. TOP NAVBAR / HEADER (STICKY FULL-WIDTH) */}
       {/* ======================================================== */}
-      <header className="bg-[#FFE600] border-4 border-black p-4 md:p-5 shadow-[6px_6px_0px_#000] flex flex-wrap items-center justify-between gap-4">
+      <header className="sticky top-0 z-40 w-full bg-[#FFE600] border-b-4 border-black px-4 md:px-8 py-3 md:py-3.5 shadow-[0px_4px_0px_#000] flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           {/* CUSTOM MASCOT LOGO */}
           <MathMascot className="w-11 h-11 md:w-12 md:h-12" />
           <div>
             <span className="font-bold text-[11px] tracking-wider text-black/80 uppercase block">
-              Media Belajar Matematika Kinetik SD
             </span>
             <h1 className="font-brand text-2xl md:text-3xl font-black uppercase tracking-wider leading-tight drop-shadow-[2px_2px_0px_#FFF] select-none">
               <span className="text-[#FF0055]">MATH</span>
@@ -415,222 +414,231 @@ export default function LandingPage({
         </div>
       </header>
 
-      {/* Notice on Gesture Camera Active */}
+      {/* Notice on Gesture Camera Active (Full Width Sub-bar) */}
       {isCameraActive && (
-        <div className="bg-[#00F5D4] border-3 border-black p-3.5 shadow-[3px_3px_0px_#000] flex items-center justify-between gap-2 text-xs font-bold text-black animate-in fade-in">
-          <div className="flex items-center gap-2">
-            <Hand className="w-5 h-5 text-black shrink-0" />
-            <span>Kamera gesture aktif! Kamu bisa gerakkan telunjukmu, cubit + tahan untuk mengklik, dan arahkan ke atas/bawah layar untuk scroll.</span>
+        <div className="w-full bg-[#00F5D4] border-b-3 border-black px-4 md:px-8 py-2.5 shadow-[0px_2px_0px_#000] animate-in fade-in">
+          <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-black">
+            <div className="flex items-center gap-2">
+              <Hand className="w-5 h-5 text-black shrink-0" />
+              <span>Kamera gesture aktif! Kamu bisa gerakkan telunjukmu, cubit + tahan untuk mengklik, dan arahkan ke atas/bawah layar untuk scroll.</span>
+            </div>
+            <button
+              onClick={() => toggleCamera(false)}
+              className="bg-white hover:bg-gray-100 border-2 border-black px-2.5 py-1 font-black uppercase shadow-[1px_1px_0px_#000] text-[10px] cursor-pointer shrink-0"
+            >
+              Matikan
+            </button>
           </div>
-          <button
-            onClick={() => toggleCamera(false)}
-            className="bg-white hover:bg-gray-100 border-2 border-black px-2 py-0.5 font-bold uppercase shadow-[1px_1px_0px_#000] text-[10px] cursor-pointer shrink-0"
-          >
-            Matikan
-          </button>
         </div>
       )}
 
       {/* ======================================================== */}
-      {/* 2. HERO INTRO (CLEAN & NON-CROWDED) */}
+      {/* MAIN CONTAINER (FULL-WIDTH & LEGA) */}
       {/* ======================================================== */}
-      <section className="bg-white border-4 border-black p-6 md:p-8 shadow-[6px_6px_0px_#000] space-y-3">
-        <span className="text-xs font-bold uppercase bg-[#70D6FF] border border-black px-2.5 py-1 inline-block">
-          Belajar Matematika Tanpa Sentuh Layar
-        </span>
-        <h2 className="text-2xl md:text-4xl font-black uppercase text-black leading-tight">
-          Asah Fokus dan Matematikamu Lewat Gerakan Kamera AI!
-        </h2>
-        <p className="text-sm md:text-base font-normal text-gray-700 leading-relaxed max-w-2xl">
-          Platform media pembelajaran matematika kinetik tanpa sentuhan fisik berbasis web camera untuk melatih fokus, motorik, dan pemahaman konsep siswa SD.
-        </p>
-      </section>
+      <main className="w-full max-w-5xl mx-auto px-4 md:px-6 py-8 space-y-10 flex-1">
 
-      {/* ======================================================== */}
-      {/* 3. FORM SISWA & PILIHAN KELAS */}
-      {/* ======================================================== */}
-      <section className="bg-[#FFFDF0] border-4 border-black p-6 md:p-8 shadow-[6px_6px_0px_#000] space-y-6">
-        <div className="flex items-center gap-2 border-b-2 border-black pb-3">
-          <User className="w-5 h-5 text-black stroke-[2.5]" />
-          <h3 className="text-xl font-black uppercase text-black">DIISI DULU, YAK</h3>
-        </div>
+        {/* ======================================================== */}
+        {/* 2. HERO INTRO (CLEAN & NON-CROWDED) */}
+        {/* ======================================================== */}
+        <section className="space-y-4 py-2 md:py-4">
+          <span className="text-xs font-black uppercase bg-[#70D6FF] border-2 border-black px-3 py-1 shadow-[2px_2px_0px_#000] inline-block">
+            Belajar Matematika Tanpa Sentuh Layar
+          </span>
+          <h2 className="text-3xl md:text-5xl font-black uppercase text-black leading-tight tracking-tight">
+            Asah Fokus dan Matematikamu Lewat Gerakan Kamera AI!
+          </h2>
+          <p className="text-base md:text-lg font-medium text-gray-700 leading-relaxed max-w-3xl">
+            Platform media pembelajaran matematika kinetik tanpa sentuhan fisik berbasis web camera untuk melatih fokus, motorik, dan pemahaman konsep siswa SD.
+          </p>
+        </section>
 
-        <div className="space-y-4">
-          
-          {/* Input Nama */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-800 block">
-              Nama Kamu
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Ketik nama kamu di sini..."
-                value={studentName}
-                onChange={e => setStudentName(e.target.value)}
-                className="w-full bg-white border-3 border-black p-3.5 text-base font-bold text-black placeholder:font-normal placeholder:text-gray-400 focus:outline-hidden focus:ring-2 focus:ring-[#FFE600] shadow-[3px_3px_0px_#000]"
-                maxLength={40}
-              />
-              {studentName.trim().length >= 2 && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 bg-[#00F5D4] border border-black p-1">
-                  <CheckCircle2 className="w-4 h-4 text-black" />
-                </div>
-              )}
-            </div>
-            <p className="text-xs font-normal text-gray-600">
-              * Nama akan dicantumkan pada kartu laporan hasil dan piagam prestasi kuis.
-            </p>
+        {/* ======================================================== */}
+        {/* 3. FORM SISWA & PILIHAN KELAS */}
+        {/* ======================================================== */}
+        <section className="bg-[#FFFDF0] border-4 border-black p-6 md:p-8 shadow-[6px_6px_0px_#000] space-y-6">
+          <div className="flex items-center gap-2 border-b-2 border-black pb-3">
+            <User className="w-5 h-5 text-black stroke-[2.5]" />
+            <h3 className="text-xl font-black uppercase text-black">DIISI DULU, YAK</h3>
           </div>
 
-          {/* Pilihan Kelas */}
-          <div className="space-y-1.5 pt-2">
-            <label className="text-xs font-bold text-gray-800 block">
-              Kelas Berapa?
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedGrade(5);
-                  playSound('pop');
-                }}
-                className={`border-3 border-black p-4 text-left transition-all cursor-pointer ${
-                  selectedGrade === 5
-                    ? 'bg-[#FFE600] shadow-[4px_4px_0px_#000] -translate-y-0.5 ring-2 ring-black'
-                    : 'bg-white hover:bg-yellow-50 shadow-[2px_2px_0px_#000]'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase bg-black text-white px-2 py-0.5">Tingkat SD</span>
-                  {selectedGrade === 5 && <span className="text-xs font-black text-black">✓ Terpilih</span>}
-                </div>
-                <h4 className="text-lg font-black uppercase mt-1">Kelas 5 SD</h4>
-                <p className="text-xs font-medium text-gray-700 mt-0.5">
-                  KPK, FPB, Pecahan Senilai, dan Geometri Bangun Datar
-                </p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedGrade(6);
-                  playSound('pop');
-                }}
-                className={`border-3 border-black p-4 text-left transition-all cursor-pointer ${
-                  selectedGrade === 6
-                    ? 'bg-[#FF70A6] shadow-[4px_4px_0px_#000] -translate-y-0.5 ring-2 ring-black'
-                    : 'bg-white hover:bg-pink-50 shadow-[2px_2px_0px_#000]'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase bg-black text-white px-2 py-0.5">Tingkat SD</span>
-                  {selectedGrade === 6 && <span className="text-xs font-black text-black">✓ Terpilih</span>}
-                </div>
-                <h4 className="text-lg font-black uppercase mt-1">Kelas 6 SD</h4>
-                <p className="text-xs font-medium text-gray-700 mt-0.5">
-                  Bilangan Negatif, Perkalian Pecahan, Rasio, dan Pola
-                </p>
-              </button>
-
-            </div>
-          </div>
-
-          {/* Tombol Mulai */}
-          <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-xs font-medium text-gray-700">
-              {!isFormValid ? (
-                <span className="text-[#FF0055] font-bold">
-                  ⚠️ Kamu WAJIB mengisi nama dan pilih kelas dulu!
-                </span>
-              ) : (
-                <span className="text-black font-bold">
-                  ✨ Aku udah SIAP! Gas klik tombol MULAI-nya.
-                </span>
-              )}
-            </div>
-
-            <button
-              onClick={() => {
-                if (!isFormValid) return;
-                playSound('click');
-                try {
-                  localStorage.setItem('mathmotion_camera_active', 'true');
-                } catch {}
-                onStartGame();
-              }}
-              disabled={!isFormValid}
-              className={`w-full sm:w-auto px-8 py-4 font-black text-base uppercase border-4 border-black transition-all flex items-center justify-center gap-2.5 ${
-                isFormValid
-                  ? 'bg-[#00F5D4] hover:bg-teal-300 shadow-[5px_5px_0px_#000] active:translate-x-1 active:translate-y-1 active:shadow-none cursor-pointer'
-                  : 'bg-gray-200 text-gray-400 border-gray-400 shadow-none cursor-not-allowed'
-              }`}
-            >
-              <Play className="w-5 h-5 fill-current" /> UDAH SIAP NIH, MULAI!
-            </button>
-          </div>
-
-        </div>
-      </section>
-
-      {/* ======================================================== */}
-      {/* 4. MODUL MATERI & MINI QUIZ (WITH SOLID BADGE TO PREVENT DOT CLASH) */}
-      {/* ======================================================== */}
-      <section className="space-y-4">
-        <div className="flex flex-col items-start gap-1">
-          <div className="inline-flex items-center gap-2 bg-white border-3 border-black px-4 py-1.5 shadow-[4px_4px_0px_#000]">
-            <BookOpen className="w-5 h-5 text-black stroke-[2.5]" />
-            <h3 className="font-black text-lg md:text-xl uppercase text-black">
-              Materi Belajar Kelas {selectedGrade}
-            </h3>
-          </div>
-          <div className="inline-block bg-white/90 border border-black/20 px-3 py-1 text-xs font-medium text-gray-700 shadow-xs">
-            YUK! Buka materi, pelajari studi kasus, dan coba kuis mini sebelum memulai kuis utama
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {currentModules.map(mod => (
-            <div
-              key={mod.id}
-              className="bg-white border-4 border-black shadow-[5px_5px_0px_#000] flex flex-col justify-between transition-all hover:-translate-y-0.5"
-            >
-              {/* 1. BADGE & JUDUL */}
-              <div className="p-4 border-b-3 border-black" style={{ backgroundColor: mod.color }}>
-                <span className="text-[10px] font-black uppercase bg-black text-white px-2 py-0.5 inline-block mb-1.5 shadow-[1px_1px_0px_#000]">
-                  {mod.badge}
-                </span>
-                <h4 className="text-base md:text-lg font-black uppercase text-black leading-snug">
-                  {mod.title}
-                </h4>
+          <div className="space-y-4">
+            
+            {/* Input Nama */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-800 block">
+                Nama Kamu
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Ketik nama kamu di sini..."
+                  value={studentName}
+                  onChange={e => setStudentName(e.target.value)}
+                  className="w-full bg-white border-3 border-black p-3.5 text-base font-bold text-black placeholder:font-normal placeholder:text-gray-400 focus:outline-hidden focus:ring-2 focus:ring-[#FFE600] shadow-[3px_3px_0px_#000]"
+                  maxLength={40}
+                />
+                {studentName.trim().length >= 2 && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 bg-[#00F5D4] border border-black p-1">
+                    <CheckCircle2 className="w-4 h-4 text-black" />
+                  </div>
+                )}
               </div>
+              <p className="text-xs font-normal text-gray-600">
+                * Nama akan dicantumkan pada kartu laporan hasil dan piagam prestasi kuis.
+              </p>
+            </div>
 
-              {/* 2. 1 PARAGRAF DESKRIPSI RAMAH ANAK */}
-              <div className="p-4 flex-1">
-                <p className="text-sm font-medium text-gray-700 leading-relaxed">
-                  {mod.summary}
-                </p>
-              </div>
-
-              {/* 3. TOMBOL BUKA MATERI */}
-              <div className="p-4 pt-0">
+            {/* Pilihan Kelas */}
+            <div className="space-y-1.5 pt-2">
+              <label className="text-xs font-bold text-gray-800 block">
+                Kelas Berapa?
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                
                 <button
+                  type="button"
                   onClick={() => {
+                    setSelectedGrade(5);
                     playSound('pop');
-                    setSelectedModule(mod);
                   }}
-                  className="w-full bg-[#FFE600] hover:bg-yellow-300 border-3 border-black py-2.5 px-3 font-bold text-xs uppercase shadow-[2px_2px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                  className={`border-3 border-black p-4 text-left transition-all cursor-pointer ${
+                    selectedGrade === 5
+                      ? 'bg-[#FFE600] shadow-[4px_4px_0px_#000] -translate-y-0.5 ring-2 ring-black'
+                      : 'bg-white hover:bg-yellow-50 shadow-[2px_2px_0px_#000]'
+                  }`}
                 >
-                  <BookOpen className="w-3.5 h-3.5" /> Buka Materi
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase bg-black text-white px-2 py-0.5">Tingkat SD</span>
+                    {selectedGrade === 5 && <span className="text-xs font-black text-black">✓ Terpilih</span>}
+                  </div>
+                  <h4 className="text-lg font-black uppercase mt-1">Kelas 5 SD</h4>
+                  <p className="text-xs font-medium text-gray-700 mt-0.5">
+                    KPK, FPB, Pecahan Senilai, dan Geometri Bangun Datar
+                  </p>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedGrade(6);
+                    playSound('pop');
+                  }}
+                  className={`border-3 border-black p-4 text-left transition-all cursor-pointer ${
+                    selectedGrade === 6
+                      ? 'bg-[#FF70A6] shadow-[4px_4px_0px_#000] -translate-y-0.5 ring-2 ring-black'
+                      : 'bg-white hover:bg-pink-50 shadow-[2px_2px_0px_#000]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase bg-black text-white px-2 py-0.5">Tingkat SD</span>
+                    {selectedGrade === 6 && <span className="text-xs font-black text-black">✓ Terpilih</span>}
+                  </div>
+                  <h4 className="text-lg font-black uppercase mt-1">Kelas 6 SD</h4>
+                  <p className="text-xs font-medium text-gray-700 mt-0.5">
+                    Bilangan Negatif, Perkalian Pecahan, Rasio, dan Pola
+                  </p>
+                </button>
+
               </div>
             </div>
-          ))}
-        </div>
-      </section>
+
+            {/* Tombol Mulai */}
+            <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-xs font-medium text-gray-700">
+                {!isFormValid ? (
+                  <span className="text-[#FF0055] font-bold">
+                    ⚠️ Kamu WAJIB mengisi nama dan pilih kelas dulu!
+                  </span>
+                ) : (
+                  <span className="text-black font-bold">
+                    ✨ Aku udah SIAP! Gas klik tombol MULAI-nya.
+                  </span>
+                )}
+              </div>
+
+              <button
+                onClick={() => {
+                  if (!isFormValid) return;
+                  playSound('click');
+                  try {
+                    localStorage.setItem('mathmotion_camera_active', 'true');
+                  } catch {}
+                  onStartGame();
+                }}
+                disabled={!isFormValid}
+                className={`w-full sm:w-auto px-8 py-4 font-black text-base uppercase border-4 border-black transition-all flex items-center justify-center gap-2.5 ${
+                  isFormValid
+                    ? 'bg-[#00F5D4] hover:bg-teal-300 shadow-[5px_5px_0px_#000] active:translate-x-1 active:translate-y-1 active:shadow-none cursor-pointer'
+                    : 'bg-gray-200 text-gray-400 border-gray-400 shadow-none cursor-not-allowed'
+                }`}
+              >
+                <Play className="w-5 h-5 fill-current" /> UDAH SIAP NIH, MULAI!
+              </button>
+            </div>
+
+          </div>
+        </section>
+
+        {/* ======================================================== */}
+        {/* 4. MODUL MATERI & MINI QUIZ */}
+        {/* ======================================================== */}
+        <section className="space-y-4">
+          <div className="flex flex-col items-start gap-1">
+            <div className="inline-flex items-center gap-2 bg-white border-3 border-black px-4 py-1.5 shadow-[4px_4px_0px_#000]">
+              <BookOpen className="w-5 h-5 text-black stroke-[2.5]" />
+              <h3 className="font-black text-lg md:text-xl uppercase text-black">
+                Materi Belajar Kelas {selectedGrade}
+              </h3>
+            </div>
+            <div className="inline-block bg-white/90 border border-black/20 px-3 py-1 text-xs font-medium text-gray-700 shadow-xs">
+              YUK! Buka materi, pelajari studi kasus, dan coba kuis mini sebelum memulai kuis utama
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {currentModules.map(mod => (
+              <div
+                key={mod.id}
+                className="bg-white border-4 border-black shadow-[5px_5px_0px_#000] flex flex-col justify-between transition-all hover:-translate-y-0.5"
+              >
+                {/* 1. BADGE & JUDUL */}
+                <div className="p-4 border-b-3 border-black" style={{ backgroundColor: mod.color }}>
+                  <span className="text-[10px] font-black uppercase bg-black text-white px-2 py-0.5 inline-block mb-1.5 shadow-[1px_1px_0px_#000]">
+                    {mod.badge}
+                  </span>
+                  <h4 className="text-base md:text-lg font-black uppercase text-black leading-snug">
+                    {mod.title}
+                  </h4>
+                </div>
+
+                {/* 2. 1 PARAGRAF DESKRIPSI RAMAH ANAK */}
+                <div className="p-4 flex-1">
+                  <p className="text-sm font-medium text-gray-700 leading-relaxed">
+                    {mod.summary}
+                  </p>
+                </div>
+
+                {/* 3. TOMBOL BUKA MATERI */}
+                <div className="p-4 pt-0">
+                  <button
+                    onClick={() => {
+                      playSound('pop');
+                      setSelectedModule(mod);
+                    }}
+                    className="w-full bg-[#FFE600] hover:bg-yellow-300 border-3 border-black py-2.5 px-3 font-bold text-xs uppercase shadow-[2px_2px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                  >
+                    <BookOpen className="w-3.5 h-3.5" /> Buka Materi
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+      </main>
 
       {/* ======================================================== */}
-      {/* 5. MODALS */}
+      {/* 5. MODALS & BACKGROUND UTILITIES */}
       {/* ======================================================== */}
       <LearningModal 
         module={selectedModule} 
@@ -658,9 +666,16 @@ export default function LandingPage({
         isVisible={isCameraActive && virtualCursor.isDetected}
       />
 
-      {/* FOOTER */}
-      <footer className="w-full bg-white border-3 border-black p-4 text-center text-xs font-medium text-gray-600 shadow-[3px_3px_0px_#000]">
-        MathMotion © 2026 • Kurikulum Merdeka Matematika Kinetik SD
+      {/* ======================================================== */}
+      {/* 6. FOOTER FULL-WIDTH */}
+      {/* ======================================================== */}
+      <footer className="w-full bg-white border-t-4 border-black py-6 text-center font-bold text-sm mt-12 shadow-[0px_-4px_0px_#000]">
+        <div className="max-w-5xl mx-auto px-4 md:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs md:text-sm font-bold text-gray-700">
+          <span>MathMotion © 2026 • Kurikulum Merdeka Matematika Kinetik SD</span>
+          <span className="bg-[#FFE600] border-2 border-black px-2.5 py-1 shadow-[2px_2px_0px_#000] text-xs font-black uppercase text-black">
+            Platform Edukasi AI Kinetik
+          </span>
+        </div>
       </footer>
 
     </div>

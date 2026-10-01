@@ -125,7 +125,7 @@ export default function MathMotionArcadeApp() {
   };
 
   return (
-    <div className="relative min-h-screen w-full font-sans antialiased text-black select-none p-3 md:p-6 flex flex-col justify-between">
+    <div className="relative min-h-screen w-full font-sans antialiased text-black select-none flex flex-col justify-between">
       
       {/* 1. MODAL RESUME / LANJUTKAN KUIS TERAKHIR */}
       {pendingResumeSession && stage === 'LANDING' && (
